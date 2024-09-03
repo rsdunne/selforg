@@ -13,9 +13,7 @@
 <canvas id="myCanvas"></canvas>
 <script>
 
-  const radius = 3
-  const friction = 0.85
-  const numCircles = 800
+  const urlParams = new URL(document.location.toString()).searchParams
 
   const RED = '#FF0000'
   const GREEN = '#00FF00'
@@ -26,21 +24,27 @@
   const ORANGE = '#ff6100'
   const CYAN = '#00dad2'
 
+  const colors = [RED, GREEN, BLUE, YELLOW, PURPLE, PINK, ORANGE, CYAN]
+
+  const radius = 3
+
+  const friction = 0.85
+
+  const numParticlesFromURL = parseInt(urlParams.get('particlecount'))
+
+  const numParticles = (isFinite(numParticlesFromURL) && numParticlesFromURL > 0) ? numParticlesFromURL : 800
+
+  const getRandomInt = (max) => Math.floor(Math.random() * max)
+
+  const colorsUsed = getRandomInt(colors.length - 1) + 3
+
+  //utils
+
   const canvas = document.getElementById('myCanvas')
   const ctx = canvas.getContext('2d')
 
-  //fps tracker
-  let frameNo = 0
-  let fps = 0
-  setInterval(() => {
-    fps = frameNo
-    frameNo = 0
-    console.log(fps)
-  }, 1000)
-
   //cache canvas width in local var - this doubles overall fps in Chrome
-  let canvasWidth = 0
-  let canvasHeight = 0
+  let canvasWidth = 0, canvasHeight = 0
 
   // Resize the canvas to fit the browser window
   function resizeCanvas () {
@@ -53,13 +57,14 @@
   window.addEventListener('resize', resizeCanvas)
   resizeCanvas()
 
-  const circles = []
+  //Frame Rate Tracker
+  let framesInLastSecond = 0
+  setInterval(() => {
+    console.log('FPS: ' + framesInLastSecond)
+    framesInLastSecond = 0
+  }, 1000)
 
   // Helper functions
-  const getRandomInt = (max) => Math.floor(Math.random() * max)
-
-  const colors = [RED, GREEN, BLUE, YELLOW, PURPLE, PINK, ORANGE, CYAN]
-  const colorsUsed = getRandomInt(colors.length - 1) + 3
 
   const wrapCoordinate = (coord, max) => ((coord % max) + max) % max
 
@@ -98,7 +103,6 @@
   const cutoff = repulsionRadius + 2 * attractorWidth
   const isoForceFnMaker = (max) =>
     (dist) => {
-      max *= 1
       if (dist < repulsionRadius) return (dist - repulsionRadius) / repulsionRadius
       if (dist < repulsionRadius + attractorWidth) return (dist - repulsionRadius) * max / attractorWidth
       if (dist < repulsionRadius + 2 * attractorWidth) return (repulsionRadius + 2 * attractorWidth - dist) * max / attractorWidth
@@ -126,13 +130,13 @@
   // Function to get the appropriate force function based on colors
   const getForceFunction = (i, j) => forceFunctionTable[i][j]
 
-  // Circle definition
-  class Circle {
+  // Particle definition
+  class Particle {
     constructor (x, y, colorIndex) {
       this.x = x
       this.y = y
-      this.vx = getRandomInt(2) - 1
-      this.vy = getRandomInt(2) - 1
+      this.vx = 0
+      this.vy = 0
       this.colorIndex = colorIndex
       this.color = colors[colorIndex]
     }
@@ -155,18 +159,18 @@
     }
 
     applyFriction () {
-      const f = friction
-      this.vx *= Math.min(f, f ** 1 / (1 + Math.log(1 + Math.abs(this.vx / 4))))
-      this.vy *= Math.min(f, f ** 1 / (1 + Math.log(1 + Math.abs(this.vy / 4))))
+      this.vx *= Math.min(friction, friction ** 1 / (1 + Math.log(1 + Math.abs(this.vx / 4))))
+      this.vy *= Math.min(friction, friction ** 1 / (1 + Math.log(1 + Math.abs(this.vy / 4))))
     }
   }
 
-  // Initialize circles
-  for (let i = 0; i < numCircles; i++) {
+  // Initialize particles
+  const particles = []
+  for (let i = 0; i < numParticles; i++) {
     const x = getRandomInt(canvasWidth)
     const y = getRandomInt(canvasHeight)
     const colorIndex = getRandomInt(colorsUsed)
-    circles.push(new Circle(x, y, colorIndex))
+    particles.push(new Particle(x, y, colorIndex))
   }
 
   // Animation loop
@@ -176,10 +180,10 @@
     ctx.fillRect(0, 0, canvasWidth, canvasHeight)
 
     // Apply forces based on distances
-    for (let i = 0; i < circles.length; i++) {
-      for (let j = i + 1; j < circles.length; j++) {
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
 
-        const md = calculateMinimumDistance(circles[i].x, circles[i].y, circles[j].x, circles[j].y, canvasWidth, canvasHeight)
+        const md = calculateMinimumDistance(particles[i].x, particles[i].y, particles[j].x, particles[j].y, canvasWidth, canvasHeight)
 
         const gx = md.deltaX
         const gy = md.deltaY
@@ -190,8 +194,8 @@
           const dist = Math.sqrt(dx * dx + dy * dy)
 
           if (dist !== 0) {
-            const forceFunc1 = getForceFunction(circles[i].colorIndex, circles[j].colorIndex)
-            const forceFunc2 = getForceFunction(circles[j].colorIndex, circles[i].colorIndex)
+            const forceFunc1 = getForceFunction(particles[i].colorIndex, particles[j].colorIndex)
+            const forceFunc2 = getForceFunction(particles[j].colorIndex, particles[i].colorIndex)
             const force1 = forceFunc1(dist)
             const force2 = forceFunc2(dist)
 
@@ -200,21 +204,21 @@
             const ax2 = (gx / dist) * force2
             const ay2 = (gy / dist) * force2
 
-            circles[i].applyForce(ax1, ay1)
-            circles[j].applyForce(ax2, ay2)
+            particles[i].applyForce(ax1, ay1)
+            particles[j].applyForce(ax2, ay2)
           }
         }
       }
-      circles[i].applyFriction()
+      particles[i].applyFriction()
     }
 
-    // Update positions and draw circles
-    for (let i = 0;i < circles.length; i++) {
-      circles[i].updatePosition()
-      circles[i].draw(ctx)
+    // Update positions and draw particles
+    for (let i = 0; i < particles.length; i++) {
+      particles[i].updatePosition()
+      particles[i].draw(ctx)
     }
 
-    frameNo++
+    framesInLastSecond++
 
     requestAnimationFrame(animate)
   }
