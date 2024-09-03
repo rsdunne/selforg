@@ -38,8 +38,6 @@
 
   const colorsUsed = getRandomInt(colors.length - 1) + 3
 
-  //utils
-
   const canvas = document.getElementById('myCanvas')
   const ctx = canvas.getContext('2d')
 
@@ -68,6 +66,18 @@
 
   const wrapCoordinate = (coord, max) => ((coord % max) + max) % max
 
+  /**
+   * Calculates the minimum distance between two points (x1, y1) and (x2, y2) on a rectangular grid
+   * with wrapping boundaries defined by width (w) and height (h).
+   *
+   * @param {number} x1 - The x-coordinate of the first point.
+   * @param {number} y1 - The y-coordinate of the first point.
+   * @param {number} x2 - The x-coordinate of the second point.
+   * @param {number} y2 - The y-coordinate of the second point.
+   * @param {number} w - The width of the rectangular grid.
+   * @param {number} h - The height of the rectangular grid.
+   * @return {{deltaX: number, deltaY: number}} - An object containing the minimum distance in the x and y directions.
+   */
   function calculateMinimumDistance (x1, y1, x2, y2, w, h) {
     // Calculate the differences for direct vector
     let deltaX = x2 - x1
@@ -98,6 +108,13 @@
     return { deltaX, deltaY }
   }
 
+  /*
+   * parametrised force function maker.
+   * The force is repulsive when particles are close together, zero at the repulsionRadius
+   * then goes up and down (or down and up) to some max/min value and back to zero again linearly
+   * over 6*repulsionRadius (3 up, 3 down)
+   */
+
   const repulsionRadius = 8 + getRandomInt(12)
   const attractorWidth = repulsionRadius * 3
   const cutoff = repulsionRadius + 2 * attractorWidth
@@ -109,22 +126,24 @@
       return 0
     }
 
-  const forceMaxes = []
+  /*
+   * build a table of forces between pairs of particles.
+   * All forces use the same basic force function with different scaling
+   * Note that unlike real physics forces are not equal and opposite
+   * so the A->B force need not be the negative of the B->A force
+   */
+  const forceFunctionTable = []
   const overallSign = Math.random() > 0.5 ? 1 : -1
   for (let i = 0; i < colorsUsed; i++) {
     const row = []
-    forceMaxes.push(row)
     for (let j = 0; j < colorsUsed; j++) {
+      //get a good distribution of attraction and repulsion between particles.
       const s1 = (i < j ? -1 : 1)
       const s2 = (i * j % getRandomInt(colorsUsed) ? 1 : -1)
       const sign = overallSign * s1 * s2
       row.push(sign * Math.random() * 0.7)
     }
-  }
-
-  const forceFunctionTable = []
-  for (let i = 0; i < forceMaxes.length; i++) {
-    forceFunctionTable.push(forceMaxes[i].map(v => isoForceFnMaker(v * 2)))
+    forceFunctionTable.push(row.map(v => isoForceFnMaker(v * 2)))
   }
 
   // Function to get the appropriate force function based on colors
