@@ -228,11 +228,11 @@
           }
         }
       }
-      particles[i].applyFriction()
     }
 
-    // Update positions and draw particles
+    // Apply friction, update positions and draw particles
     for (let i = 0; i < particles.length; i++) {
+      particles[i].applyFriction()
       particles[i].updatePosition()
       particles[i].draw(ctx)
     }
