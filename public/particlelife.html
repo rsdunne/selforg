@@ -28,15 +28,16 @@
 
   const radius = 3
 
-  const friction = 0.85
+  const friction = 0.15
 
-  const numParticlesFromURL = parseInt(urlParams.get('particlecount'))
+  const numParticlesFromURL = parseInt(urlParams.get('particles'))
 
   const numParticles = (isFinite(numParticlesFromURL) && numParticlesFromURL > 0) ? numParticlesFromURL : 800
 
   const getRandomInt = (max) => Math.floor(Math.random() * max)
 
-  const colorsUsed = getRandomInt(colors.length - 1) + 3
+  const numColorsFromURL = parseInt(urlParams.get('colors'))
+  const numColors = (isFinite(numColorsFromURL) && numColorsFromURL > 1 && numColorsFromURL <= colors.length) ? numColorsFromURL : getRandomInt(colors.length - 3) + 5
 
   const canvas = document.getElementById('myCanvas')
   const ctx = canvas.getContext('2d')
@@ -134,12 +135,12 @@
    */
   const forceFunctionTable = []
   const overallSign = Math.random() > 0.5 ? 1 : -1
-  for (let i = 0; i < colorsUsed; i++) {
+  for (let i = 0; i < numColors; i++) {
     const row = []
-    for (let j = 0; j < colorsUsed; j++) {
+    for (let j = 0; j < numColors; j++) {
       //get a good distribution of attraction and repulsion between particles.
       const s1 = (i < j ? -1 : 1)
-      const s2 = (i * j % getRandomInt(colorsUsed) ? 1 : -1)
+      const s2 = (i * j % getRandomInt(numColors) ? 1 : -1)
       const sign = overallSign * s1 * s2
       row.push(sign * Math.random() * 0.7)
     }
@@ -178,8 +179,10 @@
     }
 
     applyFriction () {
-      this.vx *= Math.min(friction, friction ** 1 / (1 + Math.log(1 + Math.abs(this.vx / 4))))
-      this.vy *= Math.min(friction, friction ** 1 / (1 + Math.log(1 + Math.abs(this.vy / 4))))
+      const MAYHEM = 4
+      const f = 1 - friction
+      this.vx *= Math.min(f, f ** 1 / (1 + Math.log(1 + Math.abs(this.vx / MAYHEM))))
+      this.vy *= Math.min(f, f ** 1 / (1 + Math.log(1 + Math.abs(this.vy / MAYHEM))))
     }
   }
 
@@ -188,7 +191,7 @@
   for (let i = 0; i < numParticles; i++) {
     const x = getRandomInt(canvasWidth)
     const y = getRandomInt(canvasHeight)
-    const colorIndex = getRandomInt(colorsUsed)
+    const colorIndex = getRandomInt(numColors)
     particles.push(new Particle(x, y, colorIndex))
   }
 
