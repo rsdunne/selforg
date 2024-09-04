@@ -36,7 +36,7 @@
 
   const getRandomInt = (max) => Math.floor(Math.random() * max)
 
-  const numColorsFromURL = parseInt(urlParams.get('colors'))
+  const numColorsFromURL = parseInt(urlParams.get('colors')) || parseInt(urlParams.get('colours'))
   const numColors = (isFinite(numColorsFromURL) && numColorsFromURL > 1 && numColorsFromURL <= colors.length) ? numColorsFromURL : getRandomInt(colors.length - 3) + 5
 
   const canvas = document.getElementById('myCanvas')
